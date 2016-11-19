@@ -2,6 +2,7 @@ import numpy as np
 from sklearn import datasets, linear_model
 import matplotlib.pyplot as plt
 
+
 # http://www.wildml.com/2015/09/implementing-a-neural-network-from-scratch/
 
 def plot_decision_boundary(pred_func, X, y):
@@ -9,11 +10,14 @@ def plot_decision_boundary(pred_func, X, y):
     x_min, x_max = X[:, 0].min() - .5, X[:, 0].max() + .5
     y_min, y_max = X[:, 1].min() - .5, X[:, 1].max() + .5
     h = 0.01
+
     # Generate a grid of points with distance h between them
     xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+
     # Predict the function value for the whole gid
     Z = pred_func(np.c_[xx.ravel(), yy.ravel()])
     Z = Z.reshape(xx.shape)
+
     # Plot the contour and training examples
     plt.contourf(xx, yy, Z, cmap=plt.cm.Spectral)
     plt.scatter(X[:, 0], X[:, 1], c=y, cmap=plt.cm.Spectral)
@@ -24,14 +28,16 @@ def plot_decision_boundary(pred_func, X, y):
 def calculate_loss(model):
     W1, b1, W2, b2 = model['W1'], model['b1'], model['W2'], model['b2']
     # Forward propagation to calculate our predictions
+
     z1 = X.dot(W1) + b1
     a1 = np.tanh(z1)
     z2 = a1.dot(W2) + b2
-    exp_scores = np.exp(z2)
-    probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+    probs = softmax(z2)
+
     # Calculating the loss
     corect_logprobs = -np.log(probs[range(num_examples), y])
     data_loss = np.sum(corect_logprobs)
+
     # Add regulatization term to loss (optional)
     data_loss += reg_lambda / 2 * (np.sum(np.square(W1)) + np.sum(np.square(W2)))
     return 1. / num_examples * data_loss
@@ -40,13 +46,29 @@ def calculate_loss(model):
 # Helper function to predict an output (0 or 1)
 def predict(model, x):
     W1, b1, W2, b2 = model['W1'], model['b1'], model['W2'], model['b2']
+
     # Forward propagation
     z1 = x.dot(W1) + b1
     a1 = np.tanh(z1)
     z2 = a1.dot(W2) + b2
-    exp_scores = np.exp(z2)
-    probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+    probs = softmax(z2)
+
     return np.argmax(probs, axis=1)
+
+
+def softmax(z):
+    exponent = np.exp(z)
+    return exponent / np.sum(exponent, axis=1, keepdims=True)
+
+
+def relu(x):
+    return np.maximum(0, x)
+
+
+def d_relu(x):
+    derivative = np.zeros(x.shape)
+    derivative[np.where(x > 0)] = 1
+    return derivative
 
 
 # This function learns parameters for the neural network and returns the model.
@@ -71,8 +93,7 @@ def build_model(nn_hdim, num_passes=40000, print_loss=False):
         z1 = X.dot(W1) + b1
         a1 = np.tanh(z1)
         z2 = a1.dot(W2) + b2
-        exp_scores = np.exp(z2)
-        probs = exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+        probs = softmax(z2)
 
         # Backpropagation
         delta3 = probs
