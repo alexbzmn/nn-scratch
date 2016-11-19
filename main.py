@@ -71,6 +71,14 @@ def d_relu(x):
     return derivative
 
 
+def sigmoid(x):
+    return 1 / (1 + np.exp(-x))
+
+
+def d_sigmoid(x):
+    return (1 - x) * x
+
+
 # This function learns parameters for the neural network and returns the model.
 # - nn_hdim: Number of nodes in the hidden layer
 # - num_passes: Number of passes through the training data for gradient descent
@@ -128,6 +136,7 @@ def build_model(nn_hdim, num_passes=40000, print_loss=False):
 np.random.seed(0)
 
 X, y = datasets.make_moons(200, noise=0.20)
+
 # plt.scatter(X[:, 0], X[:, 1], s=40, c=y, cmap=plt.cm.Spectral)
 
 num_examples = len(X)  # training set size
