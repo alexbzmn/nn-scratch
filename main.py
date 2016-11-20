@@ -26,34 +26,42 @@ def plot_decision_boundary(pred_func, X, y):
 
 # Helper function to evaluate the total loss on the dataset
 def calculate_loss(model):
-    W1, b1, W2, b2 = model['W1'], model['b1'], model['W2'], model['b2']
+    W1, b1, W2, b2, W3, b3 = model['W1'], model['b1'], model['W2'], model['b2'], model['W3'], model['b3']
     # Forward propagation to calculate our predictions
 
     z1 = X.dot(W1) + b1
     a1 = sigmoid(z1)
+
     z2 = a1.dot(W2) + b2
-    probs = softmax(z2)
+    a2 = sigmoid(z2)
+
+    z3 = a2.dot(W3) + b3
+    a3 = softmax(z3)
 
     # Calculating the loss
-    corect_logprobs = -np.log(probs[range(num_examples), y])
+    corect_logprobs = -np.log(a3[range(num_examples), y])
     data_loss = np.sum(corect_logprobs)
 
     # Add regulatization term to loss (optional)
-    data_loss += reg_lambda / 2 * (np.sum(np.square(W1)) + np.sum(np.square(W2)))
+    data_loss += reg_lambda / 2 * (np.sum(np.square(W1)) + np.sum(np.square(W2) + np.sum(np.square(W3))))
     return 1. / num_examples * data_loss
 
 
 # Helper function to predict an output (0 or 1)
 def predict(model, x):
-    W1, b1, W2, b2 = model['W1'], model['b1'], model['W2'], model['b2']
+    W1, b1, W2, b2, W3, b3 = model['W1'], model['b1'], model['W2'], model['b2'], model['W3'], model['b3']
+    # Forward propagation to calculate our predictions
 
-    # Forward propagation
     z1 = x.dot(W1) + b1
     a1 = sigmoid(z1)
-    z2 = a1.dot(W2) + b2
-    probs = softmax(z2)
 
-    return np.argmax(probs, axis=1)
+    z2 = a1.dot(W2) + b2
+    a2 = sigmoid(z2)
+
+    z3 = a2.dot(W3) + b3
+    a3 = softmax(z3)
+
+    return np.argmax(a3, axis=1)
 
 
 def softmax(z):
@@ -86,10 +94,15 @@ def d_sigmoid(x):
 def build_model(nn_hdim, num_passes=40000, print_loss=False):
     # Initialize the parameters to random values. We need to learn these.
     np.random.seed(0)
+
     W1 = np.random.randn(nn_input_dim, nn_hdim) / np.sqrt(nn_input_dim)
     b1 = np.zeros((1, nn_hdim))
-    W2 = np.random.randn(nn_hdim, nn_output_dim) / np.sqrt(nn_hdim)
-    b2 = np.zeros((1, nn_output_dim))
+
+    W2 = np.random.randn(nn_hdim, nn_hdim) / np.sqrt(nn_hdim)
+    b2 = np.zeros((1, nn_hdim))
+
+    W3 = np.random.randn(nn_hdim, nn_output_dim) / np.sqrt(nn_hdim)
+    b3 = np.zeros((1, nn_output_dim))
 
     # This is what we return at the end
     model = {}
@@ -100,19 +113,30 @@ def build_model(nn_hdim, num_passes=40000, print_loss=False):
         # Forward propagation
         z1 = X.dot(W1) + b1
         a1 = sigmoid(z1)
+
         z2 = a1.dot(W2) + b2
-        probs = softmax(z2)
+        a2 = sigmoid(z2)
+
+        z3 = a2.dot(W3) + b3
+        a3 = softmax(z3)
 
         # Backpropagation
-        delta3 = probs
-        delta3[range(num_examples), y] -= 1
-        dW2 = (a1.T).dot(delta3)
+        delta4 = a3
+        delta4[range(num_examples), y] -= 1
+        # todo something wrong here
+        dW3 = (a1.T).dot(delta4)
+        db3 = np.sum(delta4, axis=0, keepdims=True)
+
+        delta3 = d_sigmoid(a1) * delta4.dot(W3.T)
+        dW2 = (a2.T).dot(delta3)
         db2 = np.sum(delta3, axis=0, keepdims=True)
-        delta2 = delta3.dot(W2.T) * d_sigmoid(a1)
+
+        delta2 = d_sigmoid(a2) * delta3.dot(W2.T)
         dW1 = np.dot(X.T, delta2)
         db1 = np.sum(delta2, axis=0)
 
-        # Add regularization terms (b1 and b2 don't have regularization terms)
+        # Add regularization terms (b1 and B3 don't have regularization terms)
+        dW3 += reg_lambda * W3
         dW2 += reg_lambda * W2
         dW1 += reg_lambda * W1
 
@@ -121,9 +145,11 @@ def build_model(nn_hdim, num_passes=40000, print_loss=False):
         b1 += -epsilon * db1
         W2 += -epsilon * dW2
         b2 += -epsilon * db2
+        W3 += -epsilon * dW3
+        b3 += -epsilon * db3
 
         # Assign new parameters to the model
-        model = {'W1': W1, 'b1': b1, 'W2': W2, 'b2': b2}
+        model = {'W1': W1, 'b1': b1, 'W2': W2, 'b2': b2, 'W3': W3, 'b3': b3}
 
         # Optionally print the loss.
         # This is expensive because it uses the whole dataset, so we don't want to do it too often.
